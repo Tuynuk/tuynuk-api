@@ -1,0 +1,6 @@
+@Tuynuk_HostAddress = http://localhost:5144
+
+GET {{Tuynuk_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
