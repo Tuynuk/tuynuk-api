@@ -14,12 +14,12 @@ namespace Tuynuk.Api.Services.Sessions
     {
         private readonly IHubContext<SessionHub, ISessionClient> _sessionHub;
         private readonly ISessionRepository _sessionRepository;
-        private readonly IClientRepository _clientRepository;   
+        private readonly IClientRepository _clientRepository;
 
         private readonly Random _random;
         private const string ALLOWED_IDENTIFIER_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-        public IConfiguration Configuration {  get; }
+        public IConfiguration Configuration { get; }
         public HttpContext HttpContext { get; }
         public ILogger<ISessionService> Logger { get; }
 
@@ -43,7 +43,8 @@ namespace Tuynuk.Api.Services.Sessions
 
         public async Task<Guid> CreateSessionAsync(CreateSessionViewModel view)
         {
-            var identifier = GetRandomIdentifier();
+            int identifierLength = Configuration.GetValue<int>("UniqueIdentifierLength");
+            var identifier = await GenerateUniqueIdentifierAsync(identifierLength);
             var session = new Session()
             {
                 Identifier = identifier
@@ -91,26 +92,36 @@ namespace Tuynuk.Api.Services.Sessions
             return session.Id;
         }
 
-        private string GetRandomIdentifier(int length = 6)
+        private async Task<string> GenerateUniqueIdentifierAsync(int length)
+        {
+            string identifier = GenerateRandomIdentifier(length);
+
+            while (await DoesIdentifierExistAsync(identifier))
+            {
+                identifier = GenerateRandomIdentifier(length);
+            }
+
+            return identifier;
+        }
+
+        private string GenerateRandomIdentifier(int length = 6)
         {
             var identifierBuilder = new StringBuilder(length);
 
             for (int i = 0; i < length; i++)
             {
-                int index = _random.Next(0, ALLOWED_IDENTIFIER_CHARS.Length - 1);
-                identifierBuilder.Append(ALLOWED_IDENTIFIER_CHARS[index]);
+                int randomIndex = _random.Next(0, ALLOWED_IDENTIFIER_CHARS.Length);
+                identifierBuilder.Append(ALLOWED_IDENTIFIER_CHARS[randomIndex]);
             }
 
             string identifier = identifierBuilder.ToString();
 
-            bool isDuplicate = _sessionRepository.GetAll().Any(l => l.Identifier == identifier);
-
-            if (isDuplicate)
-            {
-                return GetRandomIdentifier(length);
-            }
-
             return identifier;
+        }
+
+        private async Task<bool> DoesIdentifierExistAsync(string identifier)
+        {
+            return await _sessionRepository.GetAll().AnyAsync(l => l.Identifier == identifier);
         }
     }
 }

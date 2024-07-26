@@ -1,5 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Tuynuk.Infrastructure.Models.Base;
 
 namespace Tuynuk.Api.Data.Repositories.Base
