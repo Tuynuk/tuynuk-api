@@ -4,6 +4,6 @@
     {
         Task OnSessionReady(string oppositeClientPublicKey);
         Task OnSessionCreated(string sessionIdentifier);
-        Task OnFileUploaded(Guid fileId);
+        Task OnFileUploaded(Guid fileId, string fileNamem, string HMAC);
     }
 }

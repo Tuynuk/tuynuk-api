@@ -92,7 +92,7 @@ namespace Tuynuk.Api.Services.Files
 
             var receiverClient = session.Clients.FirstOrDefault(l => l.Type == ClientType.Receiver);
 
-            await _sessionHub.Clients.Client(receiverClient.ConnectionId).OnFileUploaded(file.Id);
+            await _sessionHub.Clients.Client(receiverClient.ConnectionId).OnFileUploaded(file.Id, file.Name, HMAC);
 
             return file.Id;
         }
