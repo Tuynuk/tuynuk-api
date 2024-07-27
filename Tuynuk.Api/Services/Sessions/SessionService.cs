@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Text;
 using Tuynuk.Api.Data.Repositories.Clients;
 using Tuynuk.Api.Data.Repositories.Sessions;
+using Tuynuk.Api.Extensions;
 using Tuynuk.Api.Hubs.Sessions;
 using Tuynuk.Infrastructure.Enums.Cliens;
 using Tuynuk.Infrastructure.Models;
@@ -45,9 +46,12 @@ namespace Tuynuk.Api.Services.Sessions
         {
             int identifierLength = Configuration.GetValue<int>("UniqueIdentifierLength");
             var identifier = await GenerateUniqueIdentifierAsync(identifierLength);
+
+            string hashedIdentifier = identifier.ToSHA256Hash();
+
             var session = new Session()
             {
-                Identifier = identifier
+                Identifier = hashedIdentifier
             };
             await _sessionRepository.AddAsync(session);
 
@@ -62,16 +66,19 @@ namespace Tuynuk.Api.Services.Sessions
             await _clientRepository.AddAsync(receiverClient);
             await _sessionRepository.SaveChangesAsync();
 
-            await _sessionHub.Clients.Client(receiverClient.ConnectionId).OnSessionCreated(session.Identifier);
+            await _sessionHub.Clients.Client(receiverClient.ConnectionId).OnSessionCreated(identifier);
 
             return session.Id;
         }
 
         public async Task<Guid> JoinSessionAsync(JoinSessionViewModel view)
         {
+            view.Identifier = view.Identifier.ToSHA256Hash();
+            
             var session = await _sessionRepository.GetAll()
                             .Include(l => l.Clients)
                             .FirstOrDefaultAsync(l => l.Identifier == view.Identifier);
+
             var senderClient = new Client
             {
                 SessionId = session.Id,
@@ -121,7 +128,9 @@ namespace Tuynuk.Api.Services.Sessions
 
         private async Task<bool> DoesIdentifierExistAsync(string identifier)
         {
-            return await _sessionRepository.GetAll().AnyAsync(l => l.Identifier == identifier);
+            string hashedIdentifier = identifier.ToSHA256Hash();
+
+            return await _sessionRepository.GetAll().AnyAsync(l => l.Identifier == hashedIdentifier);
         }
     }
 }
