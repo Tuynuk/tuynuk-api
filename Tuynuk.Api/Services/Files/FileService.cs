@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Tuynuk.Api.Data.Repositories.Clients;
 using Tuynuk.Api.Data.Repositories.Files;
 using Tuynuk.Api.Data.Repositories.Sessions;
+using Tuynuk.Api.Extensions;
 using Tuynuk.Api.Hubs.Sessions;
 using Tuynuk.Infrastructure.Enums.Cliens;
 using Tuynuk.Infrastructure.ViewModels.Files;
@@ -66,9 +67,10 @@ namespace Tuynuk.Api.Services.Files
 
         public async Task<Guid> UploadFileAsync(IFormFile formfile, string sessionIdentifier, string HMAC)
         {
+            string hashedIdentifier = sessionIdentifier.ToSHA256Hash();
             var session = await _sessionRepository.GetAll()
                                 .Include(l => l.Clients)
-                                .FirstOrDefaultAsync(l => l.Identifier == sessionIdentifier);
+                                .FirstOrDefaultAsync(l => l.Identifier == hashedIdentifier);
 
             byte[] fileContent;
 
