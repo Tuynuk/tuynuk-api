@@ -7,5 +7,6 @@ namespace Tuynuk.Api.Services.Sessions
     {
         Task<Guid> CreateSessionAsync(CreateSessionViewModel view);
         Task<Guid> JoinSessionAsync(JoinSessionViewModel view);
+        Task RemoveAbandonedSessionsAsync();
     }
 }

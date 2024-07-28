@@ -12,5 +12,6 @@ namespace Tuynuk.Infrastructure.Models
         public string Identifier { get; set; }
         public IEnumerable<Client> Clients { get; set; }
         public File File { get; set; }
+        public bool IsFileDownloadRequested { get; set; } = false;
     }
 }
