@@ -48,6 +48,15 @@ namespace Tuynuk.Api.Services.Files
                                 .Include(l => l.Session)
                                 .FirstOrDefaultAsync(l => l.Id == fileId);
 
+            if (file.Session.IsFileDownloadRequested) 
+            {
+                throw new Exception("File download is requested");
+            }
+
+            file.Session.IsFileDownloadRequested = true;
+            _sessionRepository.Update(file.Session);
+            await _sessionRepository.DbContext.SaveChangesAsync();
+
             Stream stream = new MemoryStream(file.Content);
 
             var fileResult = new GetFileViewModel()
@@ -80,13 +89,7 @@ namespace Tuynuk.Api.Services.Files
                 fileContent = ms.ToArray();
             }
 
-            var file = new File
-            {
-                Content = fileContent,
-                Name = formfile.FileName,
-                SessionId = session.Id,
-                HMAC = HMAC
-            };
+            var file = new File(fileContent, formfile.FileName, session.Id, HMAC);
 
             await _filesRepository.AddAsync(file);
 

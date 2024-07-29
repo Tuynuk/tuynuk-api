@@ -1,3 +1,5 @@
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Tuynuk.Api.Data;
 using Tuynuk.Api.Data.Repositories.Clients;
@@ -18,7 +20,8 @@ namespace Tuynuk
             builder.Services.AddControllers();
             builder.Services.AddSignalR();
 
-            builder.Services.AddDbContext<TuynukDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Postgre")));
+            string postgreConnectionString = builder.Configuration.GetConnectionString("Postgre");
+            builder.Services.AddDbContext<TuynukDbContext>(o => o.UseNpgsql(postgreConnectionString));
             builder.Services.AddScoped<ISessionService, SessionService>();
             builder.Services.AddScoped<IFileService, FileService>();
             builder.Services.AddScoped<Random>();
@@ -29,8 +32,15 @@ namespace Tuynuk
 
             builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
+            builder.Services.AddHangfire(x =>
+                        x.UsePostgreSqlStorage(l => l.UseNpgsqlConnection(postgreConnectionString)));
+            builder.Services.AddHangfireServer();
+
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            long maxRequestBodySize = builder.Configuration.GetValue<long>("Kestrel:MaxRequestBodySizeInBytes");
+            builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = maxRequestBodySize);
 
             var app = builder.Build();
 
@@ -41,6 +51,9 @@ namespace Tuynuk
             }
 
             app.UseHttpsRedirection();
+
+            app.UseHangfireDashboard();
+            RecurringJob.AddOrUpdate<ISessionService>("RemoveAbandonedSessions", l => l.RemoveAbandonedSessionsAsync(), Cron.Minutely());
 
             app.UseAuthorization();
 

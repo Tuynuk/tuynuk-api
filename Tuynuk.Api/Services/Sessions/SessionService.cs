@@ -16,6 +16,7 @@ namespace Tuynuk.Api.Services.Sessions
         private readonly IHubContext<SessionHub, ISessionClient> _sessionHub;
         private readonly ISessionRepository _sessionRepository;
         private readonly IClientRepository _clientRepository;
+        private readonly IServiceProvider _serviceProvider;
 
         private readonly Random _random;
         private const string ALLOWED_IDENTIFIER_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -28,6 +29,7 @@ namespace Tuynuk.Api.Services.Sessions
             IHubContext<SessionHub, ISessionClient> sessionHub,
             ISessionRepository sessionRepository,
             IClientRepository clientRepository,
+            IServiceProvider serviceProvider,
             Random random,
             IConfiguration configuration,
             ILogger<ISessionService> logger,
@@ -36,6 +38,7 @@ namespace Tuynuk.Api.Services.Sessions
             _sessionHub = sessionHub;
             _sessionRepository = sessionRepository;
             _clientRepository = clientRepository;
+            _serviceProvider = serviceProvider;
             _random = random;
             Configuration = configuration;
             HttpContext = httpContextAccessor.HttpContext;
@@ -55,13 +58,7 @@ namespace Tuynuk.Api.Services.Sessions
             };
             await _sessionRepository.AddAsync(session);
 
-            var receiverClient = new Client
-            {
-                PublicKey = view.PublicKey,
-                ConnectionId = view.ConnectionId,
-                Type = ClientType.Receiver,
-                SessionId = session.Id
-            };
+            var receiverClient = new Client(view.ConnectionId, ClientType.Receiver, session.Id, view.PublicKey);
 
             await _clientRepository.AddAsync(receiverClient);
             await _sessionRepository.SaveChangesAsync();
@@ -79,13 +76,13 @@ namespace Tuynuk.Api.Services.Sessions
                             .Include(l => l.Clients)
                             .FirstOrDefaultAsync(l => l.Identifier == view.Identifier);
 
-            var senderClient = new Client
+            bool doesSenderExist = session.Clients.Any(l => l.Type == ClientType.Sender);
+            if (doesSenderExist) 
             {
-                SessionId = session.Id,
-                Type = ClientType.Sender,
-                PublicKey = view.PublicKey,
-                ConnectionId = view.ConnectionId
-            };
+                throw new Exception("Sender already exist");
+            }
+
+            var senderClient = new Client(view.ConnectionId, ClientType.Sender, session.Id, view.PublicKey);
 
             await _clientRepository.AddAsync(senderClient);
 
@@ -131,6 +128,23 @@ namespace Tuynuk.Api.Services.Sessions
             string hashedIdentifier = identifier.ToSHA256Hash();
 
             return await _sessionRepository.GetAll().AnyAsync(l => l.Identifier == hashedIdentifier);
+        }
+
+        public async Task RemoveAbandonedSessionsAsync()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var sessionRepository = scope.ServiceProvider.GetRequiredService<ISessionRepository>();
+                var abandonedSessions = await sessionRepository.GetAll()
+                                        .Where(l => l.Clients.Any(l => l.ConnectionId == null && l.Type == ClientType.Receiver))
+                                        .ToListAsync();
+
+                if (abandonedSessions.Any()) 
+                {
+                    sessionRepository.RemoveRange(abandonedSessions);
+                    await sessionRepository.SaveChangesAsync();   
+                }
+            }
         }
     }
 }
