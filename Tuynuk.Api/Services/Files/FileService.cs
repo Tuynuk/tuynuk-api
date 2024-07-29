@@ -55,7 +55,7 @@ namespace Tuynuk.Api.Services.Files
 
             file.Session.IsFileDownloadRequested = true;
             _sessionRepository.Update(file.Session);
-            _sessionRepository.DbContext.SaveChanges();
+            await _sessionRepository.DbContext.SaveChangesAsync();
 
             Stream stream = new MemoryStream(file.Content);
 

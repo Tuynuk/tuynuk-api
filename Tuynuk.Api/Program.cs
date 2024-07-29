@@ -39,6 +39,9 @@ namespace Tuynuk
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+            long maxRequestBodySize = builder.Configuration.GetValue<long>("Kestrel:MaxRequestBodySizeInBytes");
+            builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = maxRequestBodySize);
+
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
@@ -50,7 +53,7 @@ namespace Tuynuk
             app.UseHttpsRedirection();
 
             app.UseHangfireDashboard();
-            RecurringJob.AddOrUpdate<ISessionService>("RemoveAbandonedSessions", l => l.RemoveAbandonedSessionsAsync(), Cron.Hourly());
+            RecurringJob.AddOrUpdate<ISessionService>("RemoveAbandonedSessions", l => l.RemoveAbandonedSessionsAsync(), Cron.Minutely());
 
             app.UseAuthorization();
 

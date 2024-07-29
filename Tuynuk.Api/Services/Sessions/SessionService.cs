@@ -135,7 +135,9 @@ namespace Tuynuk.Api.Services.Sessions
             using (var scope = _serviceProvider.CreateScope())
             {
                 var sessionRepository = scope.ServiceProvider.GetRequiredService<ISessionRepository>();
-                var abandonedSessions = sessionRepository.GetAll().Where(l => l.Clients.All(l => l.ConnectionId == null));
+                var abandonedSessions = await sessionRepository.GetAll()
+                                        .Where(l => l.Clients.Any(l => l.ConnectionId == null && l.Type == ClientType.Receiver))
+                                        .ToListAsync();
 
                 if (abandonedSessions.Any()) 
                 {
