@@ -53,7 +53,7 @@ namespace Tuynuk
             app.UseHttpsRedirection();
 
             app.UseHangfireDashboard();
-            RecurringJob.AddOrUpdate<ISessionService>("RemoveAbandonedSessions", l => l.RemoveAbandonedSessionsAsync(), Cron.Minutely());
+            RecurringJob.AddOrUpdate<ISessionService>("RemoveAbandonedSessions", l => l.RemoveAbandonedSessionsAsync(), Cron.Hourly());
 
             app.UseAuthorization();
 
