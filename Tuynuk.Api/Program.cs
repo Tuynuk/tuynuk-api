@@ -5,6 +5,7 @@ using Tuynuk.Api.Data;
 using Tuynuk.Api.Data.Repositories.Clients;
 using Tuynuk.Api.Data.Repositories.Files;
 using Tuynuk.Api.Data.Repositories.Sessions;
+using Tuynuk.Api.Extensions;
 using Tuynuk.Api.Hubs.Sessions;
 using Tuynuk.Api.Services.Files;
 using Tuynuk.Api.Services.Sessions;
@@ -20,7 +21,7 @@ namespace Tuynuk
             builder.Services.AddControllers();
             builder.Services.AddSignalR();
 
-            string postgreConnectionString = builder.Configuration.GetConnectionString("Postgre");
+            string postgreConnectionString = builder.Configuration.GetConnectionString("POSTGRES");
             builder.Services.AddDbContext<TuynukDbContext>(o => o.UseNpgsql(postgreConnectionString));
             builder.Services.AddScoped<ISessionService, SessionService>();
             builder.Services.AddScoped<IFileService, FileService>();
@@ -51,6 +52,8 @@ namespace Tuynuk
             }
 
             app.UseHttpsRedirection();
+
+            app.Services.MigrateDatabase<TuynukDbContext>();
 
             app.UseHangfireDashboard();
             RecurringJob.AddOrUpdate<ISessionService>("RemoveAbandonedSessions", l => l.RemoveAbandonedSessionsAsync(), Cron.Hourly());
