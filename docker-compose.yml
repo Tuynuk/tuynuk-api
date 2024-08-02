@@ -1,0 +1,52 @@
+version: '3.4'
+
+name: tuynuk
+networks:
+  tuynuk_network:
+    driver: bridge
+
+services:
+  tuynuk_api:
+    image: ${DOCKER_REGISTRY-}tuynuk-api
+    container_name: tuynuk-api
+    build:
+      context: .
+      dockerfile: Tuynuk.Api/Dockerfile
+
+    ports:
+      - "8088:8088"
+      - "8089:8089"
+
+    depends_on:
+      tuynuk_postgres_db:
+       condition: service_healthy
+    networks:
+     - tuynuk_network
+    environment:
+     - ASPNETCORE_ENVIRONMENT=Development
+     - ConnectionStrings__POSTGRES=Server=tuynuk-postgres-db;Port=5432;Database=tuynuk-db;User ID=postgres;Password=password;
+
+  tuynuk_postgres_db:
+   image: postgres:16.3
+   container_name: tuynuk-postgres-db
+   environment:
+    - POSTGRES_USER=postgres
+    - POSTGRES_PASSWORD=q1w2e3r4Z
+    - POSTGRES_DB=tuynuk-db
+   ports:
+    - "5432:5432"
+   
+   healthcheck:
+     test: [ "CMD-SHELL", "pg_isready" ]
+     interval: 5s
+     timeout: 5s
+     retries: 5
+
+   restart: always
+   volumes:
+    - postgres_data:/var/lib/postgresql/data
+   networks:
+    - tuynuk_network
+
+volumes:
+  postgres_data:
