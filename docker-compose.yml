@@ -24,7 +24,7 @@ services:
      - tuynuk_network
     environment:
      - ASPNETCORE_ENVIRONMENT=Development
-     - ConnectionStrings__POSTGRES=Server=tuynuk-postgres-db;Port=5432;Database=tuynuk-db;User ID=postgres;Password=password;
+     - ConnectionStrings__POSTGRES=Server=tuynuk-postgres-db;Port=5432;Database=tuynuk-db;User ID=postgres;Password=q1w2e3r4Z;
 
   tuynuk_postgres_db:
    image: postgres:16.3
