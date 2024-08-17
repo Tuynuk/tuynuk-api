@@ -15,7 +15,7 @@ namespace Tuynuk.Api.Extensions
                 {
                     builder.Append(b.ToString("x2"));
                 }
-                
+
                 return builder.ToString();
             }
         }

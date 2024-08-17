@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using Serilog;
 
 namespace Tuynuk.Api.Extensions
 {
@@ -22,24 +23,24 @@ namespace Tuynuk.Api.Extensions
                 bool doesDatabaseExist = dbContext.Database.GetService<IRelationalDatabaseCreator>().Exists();
                 if (!doesDatabaseExist)
                 {
-                    Console.WriteLine("Database is creating...");
+                    Log.Information("Database is creating...");
                     dbContext.Database.Migrate();
-                    Console.WriteLine("Database is created.");
+                    Log.Information("Database is created.");
                 }
                 else if (dbContext.Database.GetPendingMigrations().Any())
                 {
-                    Console.WriteLine("Migrating Database...");
+                    Log.Information("Migrating Database...");
                     dbContext.Database.Migrate();
-                    Console.WriteLine("Database is migrated.");
+                    Log.Information("Database is migrated.");
                 }
                 else
                 {
-                    Console.WriteLine("Database already exists and is up-to-date.");
+                    Log.Information("Database already exists and is up-to-date.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Database creation or migration failed.");
+                Log.Fatal(string.Format("Database creation or migration failed: {0}", ex.Message), ex);
                 throw;
             }
         }
