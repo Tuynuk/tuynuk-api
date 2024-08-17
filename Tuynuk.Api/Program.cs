@@ -1,6 +1,7 @@
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using Tuynuk.Api.Data;
 using Tuynuk.Api.Data.Repositories.Clients;
 using Tuynuk.Api.Data.Repositories.Files;
@@ -17,6 +18,9 @@ namespace Tuynuk
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            builder.Host.UseSerilog((context, configuration) =>
+                configuration.ReadFrom.Configuration(context.Configuration));
 
             builder.Services.AddControllers();
             builder.Services.AddSignalR();
@@ -59,6 +63,8 @@ namespace Tuynuk
             RecurringJob.AddOrUpdate<ISessionService>("RemoveAbandonedSessions", l => l.RemoveAbandonedSessionsAsync(), Cron.Hourly());
 
             app.UseAuthorization();
+
+            app.UseGlobalErrorHandler();
 
             app.MapHub<SessionHub>("hubs/session");
 

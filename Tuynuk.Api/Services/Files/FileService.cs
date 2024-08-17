@@ -6,8 +6,13 @@ using Tuynuk.Api.Data.Repositories.Sessions;
 using Tuynuk.Api.Extensions;
 using Tuynuk.Api.Hubs.Sessions;
 using Tuynuk.Infrastructure.Enums.Cliens;
+using Tuynuk.Infrastructure.Exceptions.Clients;
+using Tuynuk.Infrastructure.Exceptions.Commons;
+using Tuynuk.Infrastructure.Exceptions.Files;
+using Tuynuk.Infrastructure.Exceptions.Sessions;
 using Tuynuk.Infrastructure.ViewModels.Files;
 using File = Tuynuk.Infrastructure.Models.File;
+using FileNotFoundException = Tuynuk.Infrastructure.Exceptions.Files.FileNotFoundEx;
 
 namespace Tuynuk.Api.Services.Files
 {
@@ -48,9 +53,15 @@ namespace Tuynuk.Api.Services.Files
                                 .Include(l => l.Session)
                                 .FirstOrDefaultAsync(l => l.Id == fileId);
 
-            if (file.Session.IsFileDownloadRequested) 
+            if (file == null)
             {
-                throw new Exception("File download is requested");
+                throw new FileNotFoundException("File is not found");
+            }
+
+            // File can be downloaded only once
+            if (file.Session.IsFileDownloadRequested)
+            {
+                throw new FileAlreadyRequestedEx("File is already requested for downloading");
             }
 
             file.Session.IsFileDownloadRequested = true;
@@ -67,9 +78,13 @@ namespace Tuynuk.Api.Services.Files
 
             HttpContext.Response.Headers.Append("HMAC", file.HMAC);
 
+            // Session is removed when the file is downloaded
             _sessionRepository.Remove(file.Session);
 
-            await _sessionRepository.SaveChangesAsync();
+            if (await _filesRepository.SaveChangesAsync() <= 0)
+            {
+                throw new NoDatabaseChangesMadeEx("No changes made on database");
+            }
 
             return fileResult;
         }
@@ -80,6 +95,11 @@ namespace Tuynuk.Api.Services.Files
             var session = await _sessionRepository.GetAll()
                                 .Include(l => l.Clients)
                                 .FirstOrDefaultAsync(l => l.Identifier == hashedIdentifier);
+
+            if (session == null)
+            {
+                throw new SessionNotFoundEx("Session is not found");
+            }
 
             byte[] fileContent;
 
@@ -93,9 +113,16 @@ namespace Tuynuk.Api.Services.Files
 
             await _filesRepository.AddAsync(file);
 
-            await _filesRepository.SaveChangesAsync();
+            if (await _filesRepository.SaveChangesAsync() <= 0)
+            {
+                throw new NoDatabaseChangesMadeEx("No changes made on database");
+            }
 
             var receiverClient = session.Clients.FirstOrDefault(l => l.Type == ClientType.Receiver);
+            if (receiverClient == null)
+            {
+                throw new ReceiverClientNotFoundEx("Receiver client is not found (possibly offline)");
+            }
 
             await _sessionHub.Clients.Client(receiverClient.ConnectionId).OnFileUploaded(file.Id, file.Name, HMAC);
 

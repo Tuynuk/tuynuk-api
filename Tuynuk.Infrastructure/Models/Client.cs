@@ -6,7 +6,7 @@ namespace Tuynuk.Infrastructure.Models
 {
     public class Client : BaseEntity
     {
-        public Client(string connectionId, ClientType type, Guid sessionId, string publicKey) 
+        public Client(string connectionId, ClientType type, Guid sessionId, string publicKey)
         {
             ConnectionId = connectionId;
             Type = type;

@@ -6,6 +6,9 @@ using Tuynuk.Api.Data.Repositories.Sessions;
 using Tuynuk.Api.Extensions;
 using Tuynuk.Api.Hubs.Sessions;
 using Tuynuk.Infrastructure.Enums.Cliens;
+using Tuynuk.Infrastructure.Exceptions.Clients;
+using Tuynuk.Infrastructure.Exceptions.Commons;
+using Tuynuk.Infrastructure.Exceptions.Sessions;
 using Tuynuk.Infrastructure.Models;
 using Tuynuk.Infrastructure.ViewModels.Sessions;
 
@@ -61,7 +64,11 @@ namespace Tuynuk.Api.Services.Sessions
             var receiverClient = new Client(view.ConnectionId, ClientType.Receiver, session.Id, view.PublicKey);
 
             await _clientRepository.AddAsync(receiverClient);
-            await _sessionRepository.SaveChangesAsync();
+
+            if (await _sessionRepository.SaveChangesAsync() <= 0)
+            {
+                throw new NoDatabaseChangesMadeEx("No changes made on database");
+            }
 
             await _sessionHub.Clients.Client(receiverClient.ConnectionId).OnSessionCreated(identifier);
 
@@ -71,24 +78,36 @@ namespace Tuynuk.Api.Services.Sessions
         public async Task<Guid> JoinSessionAsync(JoinSessionViewModel view)
         {
             view.Identifier = view.Identifier.ToSHA256Hash();
-            
+
             var session = await _sessionRepository.GetAll()
                             .Include(l => l.Clients)
                             .FirstOrDefaultAsync(l => l.Identifier == view.Identifier);
 
-            bool doesSenderExist = session.Clients.Any(l => l.Type == ClientType.Sender);
-            if (doesSenderExist) 
+            if (session == null)
             {
-                throw new Exception("Sender already exist");
+                throw new SessionNotFoundEx("Session is not found");
+            }
+
+            bool doesSenderExist = session.Clients.Any(l => l.Type == ClientType.Sender);
+            if (doesSenderExist)
+            {
+                throw new SenderClientAlreadyExistEx("Sender is already exist");
             }
 
             var senderClient = new Client(view.ConnectionId, ClientType.Sender, session.Id, view.PublicKey);
 
             await _clientRepository.AddAsync(senderClient);
 
-            await _sessionRepository.SaveChangesAsync();
+            if (await _clientRepository.SaveChangesAsync() <= 0)
+            {
+                throw new NoDatabaseChangesMadeEx("No changes made on database");
+            }
 
             var receiverClient = session.Clients.FirstOrDefault(l => l.Type == ClientType.Receiver);
+            if (receiverClient == null)
+            {
+                throw new ReceiverClientNotFoundEx("Receiver client is not found (possibly offline)");
+            }
 
             await _sessionHub.Clients.Client(receiverClient.ConnectionId).OnSessionReady(senderClient.PublicKey);
             await _sessionHub.Clients.Client(senderClient.ConnectionId).OnSessionReady(receiverClient.PublicKey);
@@ -132,18 +151,25 @@ namespace Tuynuk.Api.Services.Sessions
 
         public async Task RemoveAbandonedSessionsAsync()
         {
-            using (var scope = _serviceProvider.CreateScope())
+            try
             {
-                var sessionRepository = scope.ServiceProvider.GetRequiredService<ISessionRepository>();
-                var abandonedSessions = await sessionRepository.GetAll()
-                                        .Where(l => l.Clients.Any(l => l.ConnectionId == null && l.Type == ClientType.Receiver))
-                                        .ToListAsync();
-
-                if (abandonedSessions.Any()) 
+                using (var scope = _serviceProvider.CreateScope())
                 {
-                    sessionRepository.RemoveRange(abandonedSessions);
-                    await sessionRepository.SaveChangesAsync();   
+                    var sessionRepository = scope.ServiceProvider.GetRequiredService<ISessionRepository>();
+                    var abandonedSessions = await sessionRepository.GetAll()
+                                            .Where(l => l.Clients.Any(l => l.ConnectionId == null && l.Type == ClientType.Receiver))
+                                            .ToListAsync();
+
+                    if (abandonedSessions.Any())
+                    {
+                        sessionRepository.RemoveRange(abandonedSessions);
+                        await sessionRepository.SaveChangesAsync();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, ex.Message);
             }
         }
     }

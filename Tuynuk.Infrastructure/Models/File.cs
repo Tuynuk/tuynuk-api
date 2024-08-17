@@ -5,12 +5,12 @@ namespace Tuynuk.Infrastructure.Models
 {
     public class File : BaseEntity
     {
-        public File(byte[] content, string name, Guid sessionId, string HMAC) 
+        public File(byte[] content, string name, Guid sessionId, string HMAC)
         {
             Content = content;
             Name = name;
             SessionId = sessionId;
-            this.HMAC = HMAC;   
+            this.HMAC = HMAC;
         }
 
         public byte[] Content { get; set; }
