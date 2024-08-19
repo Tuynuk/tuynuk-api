@@ -14,7 +14,7 @@ services:
 
     ports:
       - "8088:8088"
-      - "8089:8089"
+      # - "8089:8089"
 
     depends_on:
       tuynuk_postgres_db:
@@ -22,7 +22,7 @@ services:
     networks:
      - tuynuk_network
     environment:
-     - ASPNETCORE_ENVIRONMENT=Development
+     - ASPNETCORE_ENVIRONMENT=Production
      - ConnectionStrings__POSTGRES=Server=tuynuk-postgres-db;Port=5432;Database=tuynuk-db;User ID=postgres;Password=q1w2e3r4Z;
 
   tuynuk_postgres_db:

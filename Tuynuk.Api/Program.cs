@@ -55,14 +55,12 @@ namespace Tuynuk
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
 
             app.Services.MigrateDatabase<TuynukDbContext>();
 
             app.UseHangfireDashboard();
             RecurringJob.AddOrUpdate<ISessionService>("RemoveAbandonedSessions", l => l.RemoveAbandonedSessionsAsync(), Cron.Hourly());
-
-            app.UseAuthorization();
 
             app.UseGlobalErrorHandler();
 
